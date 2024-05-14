@@ -9,7 +9,8 @@ import tkinter as tk
 from tkinter import messagebox
 import threading
 import time
-
+import re
+import os
 
 def scrape_jobs(job_title, locations, update_status):
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36"
@@ -32,14 +33,14 @@ def scrape_jobs(job_title, locations, update_status):
             driver.get(url)
             timeout = 10
             WebDriverWait(driver, timeout).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".job_seen_beacon"))
+                EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'job_seen_beacon')]"))
             )
 
-            job_cards = driver.find_elements(By.CSS_SELECTOR, ".job_seen_beacon")
+            job_cards = driver.find_elements(By.XPATH, "//div[contains(@class, 'job_seen_beacon')]")
 
             for card in job_cards:
                 # Extract general information
-                job_title_text = card.find_element(By.CSS_SELECTOR, "h2.jobTitle").text
+                job_title_text = card.find_element(By.XPATH, ".//h2[contains(@class, 'jobTitle')]").text
                 company_name = "Not Found"
                 job_location = "Not Found"
                 salary_range = "Not Defined"
@@ -47,30 +48,33 @@ def scrape_jobs(job_title, locations, update_status):
                 posted_date = "Not Defined"
 
                 try:
-                    company_name_element = card.find_element(By.CSS_SELECTOR, '[data-testid="company-name"]')
+                    company_name_element = card.find_element(By.XPATH, ".//*[@data-testid='company-name']")
                     company_name = company_name_element.text
 
-                    location_element = card.find_element(By.CSS_SELECTOR, '[data-testid="text-location"]')
+                    location_element = card.find_element(By.XPATH, ".//*[@data-testid='text-location']")
                     job_location = location_element.text
 
-                    salary_range_element = card.find_element(By.CSS_SELECTOR, '[data-testid="attribute_snippet_testid"]')
+                    salary_range_element = card.find_element(By.XPATH, ".//*[@data-testid='attribute_snippet_testid']")
                     salary_range = salary_range_element.text
 
                     # Find job description from underShelfFooter (with explicit wait)
                     underShelfFooter = WebDriverWait(card, 5).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, ".underShelfFooter ul"))
+                        EC.presence_of_element_located((By.XPATH, ".//div[contains(@class, 'underShelfFooter')]//ul"))
                     )
                     description_items = underShelfFooter.find_elements(By.TAG_NAME, "li")
                     job_description = "\n".join([item.text for item in description_items])
-                    
+
                     # Scrape posted date from the same section
-                    posted_date_element = card.find_element(By.CSS_SELECTOR, ".css-qvloho")
+                    posted_date_element = card.find_element(By.XPATH, ".//span[contains(@class, 'css-')]")
                     posted_date = posted_date_element.text
+
+                    # Using regex to clean up posted date
+                    posted_date = re.sub(r'Posted\s*:\s*', '', posted_date)
 
                 except Exception as e:
                     # Print errors for debugging
                     print("Error fetching additional details:", str(e))
-                
+
                 job_data.append({
                     "Company Name": company_name,
                     "Location": job_location,
@@ -87,7 +91,15 @@ def scrape_jobs(job_title, locations, update_status):
 
     # Save the job data to an Excel file
     df = pd.DataFrame(job_data)
-    df.to_excel("job_listings.xlsx", index=False)
+    
+    # If the file exists, load existing data and append new data
+    file_path = "job_listings.xlsx"
+    if os.path.exists(file_path):
+        existing_data = pd.read_excel(file_path, engine='openpyxl')
+        df = pd.concat([existing_data, df], ignore_index=True)
+
+    
+    df.to_excel(file_path, index=False)
 
     # Update status and notify the user upon completion
     update_status("Data has been written to job_listings.xlsx")
