@@ -36,27 +36,40 @@ def scrape_jobs(job_title, locations, update_status):
             EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'job')]"))
         )
 
-        job_cards = driver.find_elements(By.XPATH, "//div[contains(@class, 'job')]")
+        # Define the XPath expressions for the job elements
+        job_elements_xpath = '//div[@class="job "]'
 
-        for card in job_cards:
-            # Extract general information
-            job_title_text = driver.find_element(By.XPATH, "//h4[contains(@class, 's-18')]").get_attribute('title')
-            company_name = "Not Found"
-            job_location = "Not Found"
-            salary_range = "Not Defined"
-            job_description = "Not Defined"
-            posted_date = "Not Defined"
+        # Find all job elements
+        job_elements = driver.find_elements(By.XPATH, job_elements_xpath)
 
+        # Iterate over each job element
+        for job_element in job_elements:
+            # Title
             try:
+                title_element = job_element.find_element(By.XPATH, './/h3/a/bdi')
+                job_title_text = title_element.text
                 
-                company_name_element = card.find_element(By.XPATH, ".'//div[contains(@class, 'cname')]/*[1]'")
-                company_name = company_name_element.text
-
-                location_element = card.find_element(By.XPATH, ".//div[contains(@class, 'cname')]/*[2]")
-                job_location = location_element.text
-
-                salary_range_element = card.find_element(By.XPATH, ".//div[contains(@class, 'sal rz-salary')]")
-                salary_range = salary_range_element.text
+                # Company and Location
+                company_location_element = job_element.find_element(By.XPATH, './/div[@class="cname "]/bdi/a')
+                company_name = company_location_element.text
+                job_location = company_location_element.find_element(By.XPATH, './following-sibling::a[1]').text
+                
+                # Salary
+                salary_element = job_element.find_element(By.XPATH, './/span[@class="sal rz-salary"]/span')
+                salary_range = salary_element.text
+                
+                # Date
+                date_element = job_element.find_element(By.XPATH, './/span[@title="Posted On"]')
+                posted_date = date_element.text
+                
+                # Experience
+                experience_element = job_element.find_element(By.XPATH, './/span[@class="func-area-drn"]')
+                experience = experience_element.text
+                
+                # Description
+                description_element = job_element.find_element(By.XPATH, './/div[@class="jbody"]/bdi')
+                job_description = description_element.text
+                
 
             except Exception as e:
                 # Print errors for debugging
