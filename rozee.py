@@ -41,7 +41,13 @@ def scrape_jobs(job_title, locations, update_status):
 
         # Find all job elements
         job_elements = driver.find_elements(By.XPATH, job_elements_xpath)
-
+        salary_range = 'Not Defined!'
+        posted_date = 'Not Defined!'
+        experience = 'Not Defined!'
+        company_name = 'Not Defined!'
+        job_location = 'Not Defined!'
+        posted_date = 'Not Defined!'
+        job_description = 'Not Defined!'
         # Iterate over each job element
         for job_element in job_elements:
             # Title
@@ -54,9 +60,12 @@ def scrape_jobs(job_title, locations, update_status):
                 company_name = company_location_element.text
                 job_location = company_location_element.find_element(By.XPATH, './following-sibling::a[1]').text
                 
-                # Salary
-                salary_element = job_element.find_element(By.XPATH, './/span[@class="sal rz-salary"]/span')
-                salary_range = salary_element.text
+                # Salary (if available)
+                try:
+                    salary_element = job_element.find_element(By.XPATH, './/span[@class="sal rz-salary"]')
+                    salary_range = salary_element.text.split(': ')[-1]  
+                except Exception as e:
+                    salary_range = "Not specified"
                 
                 # Date
                 date_element = job_element.find_element(By.XPATH, './/span[@title="Posted On"]')
